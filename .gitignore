@@ -40,4 +40,4 @@ out/
 .env
 
 ### application-secret.yml ###
-appliction-secret.yml
+src/main/resources/application-secret.yml
