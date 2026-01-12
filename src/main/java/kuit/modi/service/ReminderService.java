@@ -33,13 +33,15 @@ public class ReminderService {
     private static final String DEFAULT_THUMBNAIL = "https://cdn.modi.com/diary/default-thumb.jpg";
 
     public ReminderResponse createReminder(Member member, String address) {
-        // 주소 → Location 조회
-        Location location = locationRepository.findByAddress(address)
-                .orElseThrow(() -> new IllegalArgumentException("해당 주소가 존재하지 않습니다."));
+        // 주소에 해당하는 모든 Location 조회
+        List<Location> locations = locationRepository.findAllByAddress(address);
+        if (locations.isEmpty()) {
+            throw new IllegalArgumentException("해당 주소가 존재하지 않습니다.");
+        }
 
-        // 해당 위치에서 사용자가 작성한 다이어리 최신 1개 조회
+        // 해당 Location들에 대한 Diary 조회 (최신순)
         List<Diary> diaries =
-                diaryRepository.findByMemberAndLocationOrderByDateDesc(member, location);
+                diaryRepository.findByMemberAndLocationInOrderByDateDesc(member, locations);
 
         if (diaries.isEmpty()) {
             throw new IllegalArgumentException("해당 위치에 대한 다이어리 기록이 없습니다.");
@@ -47,11 +49,11 @@ public class ReminderService {
 
         Diary latest = diaries.get(0);
 
-        // Reminder 생성 및 저장
+        // Reminder 생성
         Reminder reminder = new Reminder(
                 null,
                 null,
-                location,
+                latest.getLocation(),
                 latest.getDate(),
                 latest.getEmotion(),
                 member
@@ -59,24 +61,29 @@ public class ReminderService {
         reminderRepository.save(reminder);
 
         // 응답 생성
-        return new ReminderResponse(reminder.getId(),
+        return new ReminderResponse(
+                reminder.getId(),
                 reminder.getCreatedAt(),
                 reminder.getLocation().getAddress(),
                 reminder.getLastVisit(),
-                reminder.getEmotion().getName());
+                reminder.getEmotion().getName()
+        );
     }
 
     public ReminderPagedResponse getRemindersByAddress(
             Member member,
             ReminderQueryParams params
     ) {
-        // 1. address → Location 조회
-        Location location = locationRepository.findByAddress(params.address())
-                .orElse(null);
+        // 1. address → Locations 조회
+        List<Location> locations = locationRepository.findAllByAddress(params.address());
 
-        if (location == null) {
+        if (locations.isEmpty()) {
             return new ReminderPagedResponse(List.of(), null);
         }
+
+        List<Long> locationIds = locations.stream()
+                .map(Location::getId)
+                .toList();
 
         // 2. limit 기본값 설정
         int limit = (params.limit() == null) ? 20 : params.limit();
@@ -101,9 +108,9 @@ public class ReminderService {
         }
 
         // 4. DB 조회
-        List<Diary> diaries = diaryRepository.findPagedDiaries(
+        List<Diary> diaries = diaryRepository.findPagedDiariesByLocations(
                 member.getId(),
-                location.getId(),
+                locationIds,
                 cursorCreatedAt,
                 cursorId,
                 pageable
