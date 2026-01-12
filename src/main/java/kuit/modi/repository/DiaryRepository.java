@@ -13,26 +13,29 @@ import java.util.List;
 
 public interface DiaryRepository extends JpaRepository<Diary, Long> {
     void deleteAllByMemberId(Long memberId);
-    List<Diary> findByMemberAndLocationOrderByDateDesc(Member member, Location location);
+
     // === 커서 기반 페이징 추가 === //
     @Query("""
-        SELECT d FROM Diary d
-        WHERE d.member.id = :memberId
-          AND d.location.id = :locationId
-          AND (
-                :cursorCreatedAt IS NULL
-                OR (
-                     d.createdAt < :cursorCreatedAt
-                     OR (d.createdAt = :cursorCreatedAt AND d.id < :cursorId)
-                   )
-              )
-        ORDER BY d.createdAt DESC, d.id DESC
+        select d from Diary d
+        where d.member.id = :memberId
+            and d.location.id in :locationIds
+            and (
+                :cursorCreatedAt is null
+                or d.createdAt < :cursorCreatedAt
+                or (d.createdAt = :cursorCreatedAt and d.id < :cursorId)
+                )
+        order by d.createdAt desc, d.id desc
     """)
-    List<Diary> findPagedDiaries(
+    List<Diary> findPagedDiariesByLocations(
             @Param("memberId") Long memberId,
-            @Param("locationId") Long locationId,
+            @Param("locationIds") List<Long> locationIds,
             @Param("cursorCreatedAt") Instant cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             Pageable pageable
+    );
+
+    List<Diary> findByMemberAndLocationInOrderByDateDesc(
+            Member member,
+            List<Location> locations
     );
 }
