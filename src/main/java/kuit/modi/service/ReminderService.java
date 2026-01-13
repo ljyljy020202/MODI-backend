@@ -94,14 +94,15 @@ public class ReminderService {
 
         // 3. cursor 디코딩
         Long cursorId = null;
-        Instant cursorCreatedAt = null;
+        LocalDateTime cursorCreatedAt = null;
 
         if (params.cursor() != null) {
             try {
                 String decoded = new String(Base64.getDecoder().decode(params.cursor()));
                 JSONObject json = new JSONObject(decoded);
                 cursorId = json.getLong("id");
-                cursorCreatedAt = Instant.parse(json.getString("created_at"));
+                cursorCreatedAt = LocalDateTime.parse(json.getString("created_at"));
+                System.out.println(cursorId+"\n"+cursorCreatedAt);
             } catch (Exception e) {
                 // 잘못된 cursor는 무시
             }
@@ -119,7 +120,7 @@ public class ReminderService {
         // 5. nextCursor 생성
         String nextCursor = null;
         if (diaries.size() > limit) {
-            Diary last = diaries.get(limit);
+            Diary last = diaries.get(limit - 1);
 
             JSONObject json = new JSONObject();
             json.put("id", last.getId());

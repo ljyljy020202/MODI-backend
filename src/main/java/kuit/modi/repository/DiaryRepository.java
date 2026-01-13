@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface DiaryRepository extends JpaRepository<Diary, Long> {
@@ -29,7 +30,7 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
     List<Diary> findPagedDiariesByLocations(
             @Param("memberId") Long memberId,
             @Param("locationIds") List<Long> locationIds,
-            @Param("cursorCreatedAt") Instant cursorCreatedAt,
+            @Param("cursorCreatedAt") LocalDateTime cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             Pageable pageable
     );

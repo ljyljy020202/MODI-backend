@@ -1,5 +1,6 @@
 package kuit.modi.controller;
 
+import jakarta.validation.Valid;
 import kuit.modi.domain.Member;
 import kuit.modi.dto.reminder.*;
 import kuit.modi.service.ReminderService;
@@ -30,19 +31,9 @@ public class ReminderController {
     // 다이어리 기록 조회 API (GET /api/reminders?address=)
     @GetMapping
     public ResponseEntity<ReminderPagedResponse> getRemindersByAddress(
-            @RequestParam String address,
-            @RequestParam(required = false, defaultValue = "20") Integer limit,
-            @RequestParam(required = false) String cursor,
+            @Valid @ModelAttribute ReminderQueryParams params,
             @AuthenticationPrincipal Member member
     ) {
-        ReminderQueryParams params = new ReminderQueryParams(
-                address,
-                null,
-                null,
-                limit,
-                cursor
-        );
-
         ReminderPagedResponse response = reminderService.getRemindersByAddress(member, params);
         return ResponseEntity.ok(response);
     }
