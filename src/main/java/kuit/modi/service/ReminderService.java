@@ -147,8 +147,11 @@ public class ReminderService {
 
     public List<ReminderResponse> getRecentReminders(Member member) {
         LocalDateTime aWeekAgo = LocalDateTime.now().minusWeeks(1);
-        List<Reminder> reminders = reminderRepository.findByMemberAndCreatedAtAfterOrderByCreatedAtDesc(member, aWeekAgo);
-
+        List<Reminder> reminders =
+                reminderRepository.findTop10ByMemberAndCreatedAtAfterOrderByCreatedAtDesc(
+                member,
+                aWeekAgo
+        );
         return reminders.stream()
                 .map(reminder -> new ReminderResponse(
                         reminder.getId(),

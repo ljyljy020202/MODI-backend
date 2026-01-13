@@ -10,5 +10,8 @@ import java.util.List;
 
 @Repository
 public interface ReminderRepository extends JpaRepository<Reminder, Long> {
-    List<Reminder> findByMemberAndCreatedAtAfterOrderByCreatedAtDesc(Member member, LocalDateTime after);
+    List<Reminder> findTop10ByMemberAndCreatedAtAfterOrderByCreatedAtDesc(
+            Member member,
+            LocalDateTime createdAt
+    );
 }
