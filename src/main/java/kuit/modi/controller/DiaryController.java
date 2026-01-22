@@ -4,7 +4,6 @@ import kuit.modi.domain.Member;
 import kuit.modi.dto.diary.request.CreateDiaryRequest;
 import kuit.modi.dto.diary.request.UpdateDiaryRequest;
 import kuit.modi.dto.diary.response.*;
-import kuit.modi.dto.reminder.DiaryReminderResponse;
 import kuit.modi.exception.CustomException;
 import kuit.modi.exception.DiaryExceptionResponseStatus;
 import kuit.modi.service.DiaryQueryService;
@@ -37,6 +36,7 @@ public class DiaryController {
             @RequestPart("data") CreateDiaryRequest request,
             @RequestPart(value = "image", required = false) MultipartFile image
     ) {
+        log.info("일기 생성 API 호출: memberId={}", member.getId());
         Long createdId = diaryService.createDiary(member, request, image);
         return ResponseEntity.ok(new DiaryCreateResponse(createdId, "기록 생성이 완료되었습니다."));
     }
@@ -48,6 +48,7 @@ public class DiaryController {
             @RequestPart("data") UpdateDiaryRequest request,   // JSON 부분
             @RequestPart(value = "image", required = false) MultipartFile imageFile  // 파일 부분
     ) {
+        log.info("일기 수정 API 호출: diaryId={}", diaryId);
         diaryService.updateDiary(diaryId, request, imageFile);
         return ResponseEntity.ok(new DiaryUpdateResponse(diaryId, "기록 수정이 완료되었습니다."));
     }
@@ -56,8 +57,9 @@ public class DiaryController {
     @PostMapping("/{diaryId}/favorite")
     public ResponseEntity<?> updateFavorite(
             @PathVariable Long diaryId,
-            @RequestParam boolean favorite) {
-
+            @RequestParam boolean favorite
+    ) {
+        log.info("일기 즐겨찾기 API 호출: diaryId={}", diaryId);
         diaryService.updateFavorite(diaryId, favorite);
         return ResponseEntity.ok(
                 new FavoriteUpdateResponse("즐겨찾기 " + (favorite ? "등록" : "해제") + " 완료되었습니다.")
@@ -66,7 +68,10 @@ public class DiaryController {
 
     // 일기 삭제
     @DeleteMapping("/{diaryId}")
-    public ResponseEntity<?> deleteDiary(@PathVariable Long diaryId) {
+    public ResponseEntity<?> deleteDiary(
+            @PathVariable Long diaryId
+    ) {
+        log.info("일기 삭제 API 호출: diaryId={}", diaryId);
         diaryService.deleteDiary(diaryId);
         return ResponseEntity.ok(new DiaryDeleteResponse("기록 삭제가 완료되었습니다."));
     }
@@ -76,16 +81,18 @@ public class DiaryController {
     public ResponseEntity<?> getDiaryAll(
             @AuthenticationPrincipal Member member
     ) {
+        log.info("홈화면 전체 일기 조회 API 호출: memberId={}", member.getId());
         DiaryAllResponse response = diaryQueryService.getDiaryAll(member);
         return ResponseEntity.ok(response);
     }
 
-    //일기 상세 조회
+    // 일기 상세 조회
     @GetMapping("/{diaryId}")
     public ResponseEntity<DiaryDetailResponse> getDiaryDetail(
             @AuthenticationPrincipal Member member,
             @PathVariable Long diaryId
     ) {
+        log.info("일기 상세 조회 API 호출: diaryId={}", diaryId);
         DiaryDetailResponse response = diaryQueryService.getDiaryDetail(diaryId, member);
         return ResponseEntity.ok(response);
     }
@@ -97,6 +104,7 @@ public class DiaryController {
             @RequestParam int year,
             @RequestParam int month
     ) {
+        log.info("일별 기록 조회 API 호출: memberId={}, year={}, month={}", member.getId(), year, month);
         DiaryAllResponse response = diaryQueryService.getDailyDetailMonthly(year, month, member);
         return ResponseEntity.ok(response);
     }
@@ -115,6 +123,7 @@ public class DiaryController {
         List<DiaryMonthlyItemResponse> diaries = diaryQueryService.getMonthlyDiaries(year, month, member);
         return ResponseEntity.ok(diaries);
     }*/
+
     @GetMapping(params = {"year", "month"})
     public ResponseEntity<DiaryPageResponse<DiaryMonthlyItemResponse>> getMonthlyDiaries(
             @AuthenticationPrincipal Member member,
@@ -123,6 +132,7 @@ public class DiaryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
+        log.info("월별 기록 조회 API 호출: memberId={}, year={}, month={}", member.getId(), year, month);
         if (year <= 0 || month < 1 || month > 12) {
             throw new CustomException(DiaryExceptionResponseStatus.INVALID_YEAR_MONTH);
         }
@@ -140,6 +150,7 @@ public class DiaryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
+        log.info("즐겨찾기 일기 목록 조회 API 호출: memberId={}", member.getId());
         DiaryPageResponse<FavoriteDiaryItemResponse> response =
                 diaryQueryService.getFavoriteDiariesPaged(member, page, size);
         return ResponseEntity.ok(response);
@@ -152,6 +163,7 @@ public class DiaryController {
             @RequestParam int year,
             @RequestParam int month
     ) {
+        log.info("월간 통계 조회 API 호출: memberId={}, year={}, month={}", member.getId(), year, month);
         DiaryStatisticsResponse response = diaryQueryService.getMonthlyStatistics(year, month, member);
         return ResponseEntity.ok(response);
     }
@@ -162,8 +174,9 @@ public class DiaryController {
             @AuthenticationPrincipal Member member,
             @RequestParam String tagName
     ) {
+        log.info("태그 이름 기반 검색 API 호출: memberId={}, tagname={}", member.getId(), tagName);
         // 핸들러가 실제로 매칭되는지, 값이 뭘로 들어오는지 확인
-        log.info("GET /diaries?tagName={} (memberId={})", tagName, member != null ? member.getId() : null);
+        //log.info("GET /diaries?tagName={} (memberId={})", tagName, member != null ? member.getId() : null);
         return ResponseEntity.ok(diaryQueryService.getDiariesByTagName(tagName, member));
     }
 
@@ -178,6 +191,7 @@ public class DiaryController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
+        log.info("태그 Id 기반 검색 API 호출: memberId={}, tagId={}", member.getId(), tagId);
         // size 최대값 제한
         if (size > 100) {
             size = 100;
@@ -190,7 +204,10 @@ public class DiaryController {
 
     // 많이 쓰이는 태그 조회
     @GetMapping("/tags/popular")
-    public ResponseEntity<List<String>> getPopularTags(@AuthenticationPrincipal Member member) {
+    public ResponseEntity<List<String>> getPopularTags(
+            @AuthenticationPrincipal Member member
+    ) {
+        log.info("많이 쓰이는 태그 조회 API 호출: memberId={}", member.getId());
         List<String> tags = diaryQueryService.getPopularTags(member.getId());
         return ResponseEntity.ok(tags);
     }
@@ -202,8 +219,9 @@ public class DiaryController {
             @RequestParam double swLng,
             @RequestParam double neLat,
             @RequestParam double neLng,
-            @AuthenticationPrincipal Member member) {
-
+            @AuthenticationPrincipal Member member
+    ) {
+        log.info("지도 조회 API 호출: memberId={}, swLat={}, swLng={}, neLat={}, neLng={}", member.getId(), swLat, swLng, neLat, neLng);
         List<DiaryNearbyResponse> diaries = diaryQueryService.getNearbyDiaries(swLat, swLng, neLat, neLng, member);
         return ResponseEntity.ok(diaries);
     }
