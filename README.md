@@ -1,8 +1,4 @@
-사진, 감정, 키워드를 기반으로 일상을 쉽고 생생하게 기록할 수 있는 AI 기반 기록 서비스, Skills: Spring Boot, MySQL, Docker, AWS(EC2, RDS, S3)
-
 # MODI-backend
-## MODI backend 레포지토리입니다.
-
 MODI는 사용자의 일상 기록을 사진/감정/키워드 중심으로 저장하고, AI 기능을 통해 요약/문체 변환/자동 문장 생성을 지원하는 백엔드 서비스입니다.
 
 ## Skills
@@ -70,8 +66,7 @@ src
 - CD: CI 성공 시 배포 워크플로우 실행
 - 배포 시크릿이 없는 경우, CD 워크플로우는 skip 메시지를 남기고 종료
 
-## Existing References
-기존 문서/링크는 아래에 유지합니다.
+## References
 
 ### ERD
 https://www.erdcloud.com/d/Hhmnhir4ys9LYGRoE
