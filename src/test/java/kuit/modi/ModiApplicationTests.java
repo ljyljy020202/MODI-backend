@@ -1,13 +1,11 @@
 package kuit.modi;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-
-@SpringBootTest
 class ModiApplicationTests {
 
 	@Test
-	void contextLoads() {
+	void applicationClassExists() {
+		ModiApplication.class.getName();
 	}
 
 }

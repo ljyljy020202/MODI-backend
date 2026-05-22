@@ -1,15 +1,34 @@
 name: Deploy to EC2
 
 on:
-  push:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   deploy:
+    if: >
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check deploy secrets
+        id: precheck
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          if [ -n "$EC2_HOST" ] && [ -n "$EC2_SSH_KEY" ]; then
+            echo "can_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "can_deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip deploy when secrets are missing
+        if: steps.precheck.outputs.can_deploy != 'true'
+        run: echo "CD workflow is configured, but deployment is skipped because EC2 secrets are not set."
+
       - name: EC2 SSH 접속 후 배포 스크립트 실행
+        if: steps.precheck.outputs.can_deploy == 'true'
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
