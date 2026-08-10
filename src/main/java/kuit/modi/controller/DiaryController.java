@@ -125,11 +125,11 @@ public class DiaryController {
     }*/
 
     @GetMapping(params = {"year", "month"})
-    public ResponseEntity<DiaryPageResponse<DiaryMonthlyItemResponse>> getMonthlyDiaries(
+    public ResponseEntity<CursorPageResponse<DiaryMonthlyItemResponse>> getMonthlyDiaries(
             @AuthenticationPrincipal Member member,
             @RequestParam int year,
             @RequestParam int month,
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") int size
     ) {
         log.info("월별 기록 조회 API 호출: memberId={}, year={}, month={}", member.getId(), year, month);
@@ -137,22 +137,21 @@ public class DiaryController {
             throw new CustomException(DiaryExceptionResponseStatus.INVALID_YEAR_MONTH);
         }
 
-        DiaryPageResponse<DiaryMonthlyItemResponse> response =
-                diaryQueryService.getMonthlyDiariesPaged(year, month, member, page, size);
+        CursorPageResponse<DiaryMonthlyItemResponse> response =
+                diaryQueryService.getMonthlyDiariesCursor(year, month, member, cursor, size);
         return ResponseEntity.ok(response);
     }
 
-    // 즐겨찾기한 일기 목록 조회 (페이징 처리)
-    // - 사용자가 즐겨찾기한 일기를 페이징하여 반환
+    // 즐겨찾기한 일기 목록 조회 (커서 페이징)
     @GetMapping("/favorites")
-    public ResponseEntity<DiaryPageResponse<FavoriteDiaryItemResponse>> getFavoriteDiaries(
+    public ResponseEntity<CursorPageResponse<FavoriteDiaryItemResponse>> getFavoriteDiaries(
             @AuthenticationPrincipal Member member,
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") int size
     ) {
         log.info("즐겨찾기 일기 목록 조회 API 호출: memberId={}", member.getId());
-        DiaryPageResponse<FavoriteDiaryItemResponse> response =
-                diaryQueryService.getFavoriteDiariesPaged(member, page, size);
+        CursorPageResponse<FavoriteDiaryItemResponse> response =
+                diaryQueryService.getFavoriteDiariesCursor(member, cursor, size);
         return ResponseEntity.ok(response);
     }
 
@@ -180,25 +179,19 @@ public class DiaryController {
         return ResponseEntity.ok(diaryQueryService.getDiariesByTagName(tagName, member));
     }
 
-    // 태그 ID 기반 일기 검색 (페이징 처리)
-    // - tagId를 기반으로 해당 태그가 지정된 일기를 조회
-    // - 날짜별로 자동 그룹화하여 반환
-    // - date 내림차순 정렬
+    // 태그 ID 기반 일기 검색 (커서 페이징)
     @GetMapping("/by-tag")
-    public ResponseEntity<DiaryPageResponse<DiaryTagSearchItemResponse>> getDiariesByTagId(
+    public ResponseEntity<CursorPageResponse<DiaryTagSearchItemResponse>> getDiariesByTagId(
             @AuthenticationPrincipal Member member,
             @RequestParam Long tagId,
-            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") int size
     ) {
         log.info("태그 Id 기반 검색 API 호출: memberId={}, tagId={}", member.getId(), tagId);
-        // size 최대값 제한
-        if (size > 100) {
-            size = 100;
-        }
+        if (size > 100) size = 100;
 
-        DiaryPageResponse<DiaryTagSearchItemResponse> response =
-                diaryQueryService.getDiariesByTagIdPaged(member, tagId, page, size);
+        CursorPageResponse<DiaryTagSearchItemResponse> response =
+                diaryQueryService.getDiariesByTagIdCursor(member, tagId, cursor, size);
         return ResponseEntity.ok(response);
     }
 

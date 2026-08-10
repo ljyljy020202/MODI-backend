@@ -2,6 +2,7 @@ package kuit.modi.repository;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
 import kuit.modi.domain.Diary;
 import kuit.modi.domain.Member;
 import org.springframework.data.domain.Page;
@@ -390,6 +391,81 @@ public class DiaryQueryRepository {
                 .setParameter("memberId", memberId)
                 .setParameter("tagId", tagId)
                 .getSingleResult();
+    }
+
+    // 월별 조회 - createdAt+id 복합 커서 기반
+    public List<Diary> findByYearMonthCursor(Long memberId, int year, int month,
+            LocalDateTime lastCreatedAt, Long lastId, int size) {
+        String jpql = "SELECT d FROM Diary d " +
+                "LEFT JOIN FETCH d.image " +
+                "LEFT JOIN FETCH d.emotion " +
+                "WHERE d.member.id = :memberId " +
+                "AND FUNCTION('YEAR', d.date) = :year " +
+                "AND FUNCTION('MONTH', d.date) = :month ";
+        if (lastCreatedAt != null) {
+            jpql += "AND (d.createdAt < :lastCreatedAt " +
+                    "OR (d.createdAt = :lastCreatedAt AND d.id < :lastId)) ";
+        }
+        jpql += "ORDER BY d.createdAt DESC, d.id DESC";
+
+        TypedQuery<Diary> query = em.createQuery(jpql, Diary.class)
+                .setParameter("memberId", memberId)
+                .setParameter("year", year)
+                .setParameter("month", month)
+                .setMaxResults(size + 1);
+        if (lastCreatedAt != null) {
+            query.setParameter("lastCreatedAt", lastCreatedAt);
+            query.setParameter("lastId", lastId);
+        }
+        return query.getResultList();
+    }
+
+    // 즐겨찾기 조회 - createdAt+id 복합 커서 기반
+    public List<Diary> findFavoritesCursor(Long memberId, LocalDateTime lastCreatedAt, Long lastId, int size) {
+        String jpql = "SELECT d FROM Diary d " +
+                "LEFT JOIN FETCH d.image " +
+                "WHERE d.member.id = :memberId " +
+                "AND d.favorite = true ";
+        if (lastCreatedAt != null) {
+            jpql += "AND (d.createdAt < :lastCreatedAt " +
+                    "OR (d.createdAt = :lastCreatedAt AND d.id < :lastId)) ";
+        }
+        jpql += "ORDER BY d.createdAt DESC, d.id DESC";
+
+        TypedQuery<Diary> query = em.createQuery(jpql, Diary.class)
+                .setParameter("memberId", memberId)
+                .setMaxResults(size + 1);
+        if (lastCreatedAt != null) {
+            query.setParameter("lastCreatedAt", lastCreatedAt);
+            query.setParameter("lastId", lastId);
+        }
+        return query.getResultList();
+    }
+
+    // 태그 ID 기반 조회 - createdAt+id 복합 커서 기반
+    public List<Diary> findByTagIdCursor(Long memberId, Long tagId,
+            LocalDateTime lastCreatedAt, Long lastId, int size) {
+        String jpql = "SELECT DISTINCT d FROM Diary d " +
+                "LEFT JOIN FETCH d.image " +
+                "WHERE d.member.id = :memberId " +
+                "AND EXISTS (" +
+                "  SELECT 1 FROM DiaryTag dt " +
+                "  WHERE dt.diary = d AND dt.tag.id = :tagId) ";
+        if (lastCreatedAt != null) {
+            jpql += "AND (d.createdAt < :lastCreatedAt " +
+                    "OR (d.createdAt = :lastCreatedAt AND d.id < :lastId)) ";
+        }
+        jpql += "ORDER BY d.createdAt DESC, d.id DESC";
+
+        TypedQuery<Diary> query = em.createQuery(jpql, Diary.class)
+                .setParameter("memberId", memberId)
+                .setParameter("tagId", tagId)
+                .setMaxResults(size + 1);
+        if (lastCreatedAt != null) {
+            query.setParameter("lastCreatedAt", lastCreatedAt);
+            query.setParameter("lastId", lastId);
+        }
+        return query.getResultList();
     }
 
 }
