@@ -12,6 +12,7 @@ import kuit.modi.exception.DiaryExceptionResponseStatus;
 import kuit.modi.repository.DiaryQueryRepository;
 import kuit.modi.repository.DiaryTagRepository;
 import kuit.modi.repository.TagRepository;
+import kuit.modi.util.CursorUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -465,6 +466,132 @@ public class DiaryQueryService {
         boolean hasNext = (page + 1) < totalPages;
 
         return new DiaryPageResponse<>(content, page, size, totalElements, totalPages, hasNext);
+    }
+
+    // 월별 조회 - createdAt+id 복합 커서 기반
+    @Transactional(readOnly = true)
+    public CursorPageResponse<DiaryMonthlyItemResponse> getMonthlyDiariesCursor(
+            int year, int month, Member member, String cursor, int size) {
+
+        if (month < 1 || month > 12) {
+            throw new CustomException(DiaryExceptionResponseStatus.INVALID_YEAR_MONTH);
+        }
+
+        CursorUtils.Decoded decoded = (cursor != null && !cursor.isBlank())
+                ? CursorUtils.decode(cursor) : null;
+
+        List<Diary> diaries = diaryQueryRepository.findByYearMonthCursor(
+                member.getId(), year, month,
+                decoded != null ? decoded.createdAt() : null,
+                decoded != null ? decoded.id() : null,
+                size);
+
+        boolean hasNext = diaries.size() > size;
+        if (hasNext) diaries = new ArrayList<>(diaries.subList(0, size));
+
+        List<DiaryMonthlyItemResponse> content = diaries.stream()
+                .map(diary -> new DiaryMonthlyItemResponse(
+                        diary.getId(),
+                        diary.getDate().toLocalDate(),
+                        diary.getImage() != null ? s3Service.getFileUrl(diary.getImage().getUrl()) : null,
+                        diary.getEmotion().getName(),
+                        diary.getCreatedAt()
+                ))
+                .toList();
+
+        String nextCursor = hasNext
+                ? CursorUtils.encode(
+                        diaries.get(diaries.size() - 1).getCreatedAt(),
+                        diaries.get(diaries.size() - 1).getId())
+                : null;
+
+        return new CursorPageResponse<>(content, nextCursor, hasNext);
+    }
+
+    // 즐겨찾기 조회 - createdAt+id 복합 커서 기반
+    @Transactional(readOnly = true)
+    public CursorPageResponse<FavoriteDiaryItemResponse> getFavoriteDiariesCursor(
+            Member member, String cursor, int size) {
+
+        CursorUtils.Decoded decoded = (cursor != null && !cursor.isBlank())
+                ? CursorUtils.decode(cursor) : null;
+
+        List<Diary> diaries = diaryQueryRepository.findFavoritesCursor(
+                member.getId(),
+                decoded != null ? decoded.createdAt() : null,
+                decoded != null ? decoded.id() : null,
+                size);
+
+        boolean hasNext = diaries.size() > size;
+        if (hasNext) diaries = new ArrayList<>(diaries.subList(0, size));
+
+        List<FavoriteDiaryItemResponse> content = diaries.stream()
+                .map(diary -> new FavoriteDiaryItemResponse(
+                        diary.getId(),
+                        diary.getDate().toLocalDate(),
+                        diary.getImage() != null ? s3Service.getFileUrl(diary.getImage().getUrl()) : null,
+                        diary.getCreatedAt()
+                ))
+                .toList();
+
+        String nextCursor = hasNext
+                ? CursorUtils.encode(
+                        diaries.get(diaries.size() - 1).getCreatedAt(),
+                        diaries.get(diaries.size() - 1).getId())
+                : null;
+
+        return new CursorPageResponse<>(content, nextCursor, hasNext);
+    }
+
+    // 태그 ID 기반 조회 - createdAt+id 복합 커서 기반
+    @Transactional(readOnly = true)
+    public CursorPageResponse<DiaryTagSearchItemResponse> getDiariesByTagIdCursor(
+            Member member, Long tagId, String cursor, int size) {
+
+        if (tagId == null || tagId <= 0) {
+            throw new CustomException(DiaryExceptionResponseStatus.INVALID_TAG_ID);
+        }
+
+        CursorUtils.Decoded decoded = (cursor != null && !cursor.isBlank())
+                ? CursorUtils.decode(cursor) : null;
+
+        List<Diary> diaries = diaryQueryRepository.findByTagIdCursor(
+                member.getId(), tagId,
+                decoded != null ? decoded.createdAt() : null,
+                decoded != null ? decoded.id() : null,
+                size);
+
+        boolean hasNext = diaries.size() > size;
+        if (hasNext) diaries = new ArrayList<>(diaries.subList(0, size));
+
+        // 날짜별 그룹화 (최신순)
+        Map<LocalDate, Map<Long, List<String>>> byDate = new TreeMap<>(Collections.reverseOrder());
+        for (Diary diary : diaries) {
+            LocalDate date = diary.getDate().toLocalDate();
+            String imageUrl = diary.getImage() != null
+                    ? s3Service.getFileUrl(diary.getImage().getUrl()) : null;
+            byDate.computeIfAbsent(date, d -> new LinkedHashMap<>())
+                    .computeIfAbsent(diary.getId(), id -> new ArrayList<>())
+                    .add(imageUrl);
+        }
+
+        List<DiaryTagSearchItemResponse> content = byDate.entrySet().stream()
+                .map(entry -> new DiaryTagSearchItemResponse(
+                        entry.getKey(),
+                        entry.getValue().entrySet().stream()
+                                .map(e -> new DiaryImageGroupResponse(
+                                        e.getKey(),
+                                        e.getValue().stream().filter(Objects::nonNull).collect(Collectors.toList())))
+                                .toList()))
+                .toList();
+
+        String nextCursor = hasNext
+                ? CursorUtils.encode(
+                        diaries.get(diaries.size() - 1).getCreatedAt(),
+                        diaries.get(diaries.size() - 1).getId())
+                : null;
+
+        return new CursorPageResponse<>(content, nextCursor, hasNext);
     }
 
 }
